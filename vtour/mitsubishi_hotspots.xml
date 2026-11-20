@@ -1,0 +1,52 @@
+<krpano>
+    <!-- =========================================================================
+         三菱史料館 ウェブ展示室 連携アドオン (mitsubishi_hotspots.xml)
+         使い方：既存の vtour/tour.xml の <krpano> タグ内（末尾など）に下記の1行を追加するだけです：
+         <include url="mitsubishi_hotspots.xml" />
+         ========================================================================= -->
+
+    <!-- 1. 右クリックメニューの著作権保護カスタマイズ（要件2-(2)⑧・4-(8)） -->
+    <contextmenu fullscreen="true" versioninfo="false" touch="false">
+        <item name="meri_copyright"
+              caption="© 公益財団法人 三菱経済研究所 三菱史料館 (画像の無断保存・転載禁止)"
+              enabled="false" />
+    </contextmenu>
+
+    <!-- 2. 現在のシーンに展示パネル・ショーケース・タッチパネルのホットスポットを自動配置するアクション -->
+    <events name="meri_archive_events" keep="true" onxmlcomplete="meri_inject_hotspots();" />
+
+    <action name="meri_inject_hotspots">
+        <!-- ① ショーケースB ホットスポット（クリックでショーケース内史料一覧 → 古文書超拡大＋解説併記） -->
+        addhotspot(hs_meri_showcase_b);
+        set(hotspot[hs_meri_showcase_b].url, '%CURRENTXML%/skin/vtourskin_hotspot.png');
+        set(hotspot[hs_meri_showcase_b].ath, -14.0);
+        set(hotspot[hs_meri_showcase_b].atv, 14.0);
+        set(hotspot[hs_meri_showcase_b].scale, 0.85);
+        set(hotspot[hs_meri_showcase_b]. linkedscene, '');
+        set(hotspot[hs_meri_showcase_b].onclick, js(window.ArchiveBridge.openShowcaseDrawer('SHOWCASE-B')));
+
+        <!-- ② 展示パネル2 ホットスポット（クリックでパネル全画面OpenSeadragon拡大） -->
+        addhotspot(hs_meri_panel_02);
+        set(hotspot[hs_meri_panel_02].url, '%CURRENTXML%/skin/vtourskin_hotspot.png');
+        set(hotspot[hs_meri_panel_02].ath, -16.0);
+        set(hotspot[hs_meri_panel_02].atv, -7.0);
+        set(hotspot[hs_meri_panel_02].scale, 0.85);
+        set(hotspot[hs_meri_panel_02].onclick, js(window.ArchiveBridge.openPanelModal('PANEL-02')));
+
+        <!-- ③ 古文書ダイレクト超拡大ホットスポット（郵便汽船三菱会社 社則達書を直接開く場合） -->
+        addhotspot(hs_meri_doc_001);
+        set(hotspot[hs_meri_doc_001].url, '%CURRENTXML%/skin/vtourskin_hotspot.png');
+        set(hotspot[hs_meri_doc_001].ath, 5.0);
+        set(hotspot[hs_meri_doc_001].atv, 12.0);
+        set(hotspot[hs_meri_doc_001].scale, 0.85);
+        set(hotspot[hs_meri_doc_001].onclick, js(window.ArchiveBridge.openDocumentModal('MERI-M08-001')));
+
+        <!-- ④ タッチパネル（過去の企画展・三菱のあゆみ）ホットスポット -->
+        addhotspot(hs_meri_touch);
+        set(hotspot[hs_meri_touch].url, '%CURRENTXML%/skin/vtourskin_hotspot.png');
+        set(hotspot[hs_meri_touch].ath, 34.0);
+        set(hotspot[hs_meri_touch].atv, -3.0);
+        set(hotspot[hs_meri_touch].scale, 0.85);
+        set(hotspot[hs_meri_touch].onclick, js(window.ArchiveBridge.openSpecialExhibitionModal()));
+    </action>
+</krpano>

@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>三菱史料館 ウェブ展示室 v2.0 (203点対応・複数画像切替・DZI切片自動生成ツール付)</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.1/openseadragon.min.js"></script>
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="bg-slate-950 text-gray-100 select-none">
+
+    <!-- Top Navigation Header -->
+    <header class="h-16 bg-slate-900 border-b border-amber-500/30 px-4 lg:px-6 flex items-center justify-between z-40 relative shadow-lg">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded bg-red-700 flex items-center justify-center shadow-inner border border-red-400/40 font-bold text-white text-lg">
+                ❖
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 id="header-main-title" class="font-bold text-base md:text-lg tracking-wide text-white">三菱史料館 ウェブ展示室</h1>
+                    <span class="sans-ui hidden sm:inline-block bg-amber-500/20 text-amber-300 border border-amber-400/40 text-[11px] px-2 py-0.5 rounded font-semibold">
+                        203点史料・複数画像切替・異サイズDZI自動生成対応版
+                    </span>
+                </div>
+                <p class="sans-ui text-[11px] text-gray-400 hidden md:block">
+                    公益財団法人 三菱経済研究所  |  Krpano 360°空間 × OpenSeadragon 複数画像切替 × 納品データ生成ツール
+                </p>
+            </div>
+        </div>
+
+        <!-- Mode Switcher & Language Toggle -->
+        <div class="flex items-center gap-2">
+            <button type="button" id="tab-btn-visitor" class="sans-ui px-3.5 py-1.5 rounded-lg font-bold text-xs md:text-sm bg-amber-500 text-slate-950 shadow">
+                🏛️ 展示室 360°ビュー（来館者画面）
+            </button>
+            <button type="button" id="tab-btn-cms" class="sans-ui px-3.5 py-1.5 rounded-lg font-semibold text-xs md:text-sm bg-slate-800 text-gray-200 hover:bg-slate-700 border border-slate-600">
+                🛠️ 203点データ＆DZI切片 登録生成ツール
+            </button>
+            <button type="button" id="btn-lang-toggle" class="sans-ui px-3 py-1.5 rounded-lg font-semibold text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40">
+                🌐 English / 英語表示へ
+            </button>
+        </div>
+    </header>
+
+    <!-- =======================================================================
+         VIEW 1: VISITOR 360° EXHIBITION ROOM VIEW (Krpano + OpenSeadragon)
+         ======================================================================= -->
+    <main id="view-visitor" class="relative">
+        <div id="pano-viewport">
+            <canvas id="pano-canvas" class="w-full h-full block"></canvas>
+            <div id="hotspot-layer" class="absolute inset-0 pointer-events-auto"></div>
+
+            <!-- Top-Left: Current Location & One-Click Demonstration Bar -->
+            <div class="pano-ui-overlay absolute top-4 left-4 z-30 flex flex-col gap-2 max-w-md">
+                <div class="sans-ui bg-slate-900/90 backdrop-blur-md border border-amber-500/40 px-3.5 py-2 rounded-xl shadow-xl">
+                    <div id="current-room-badge" class="text-xs font-bold text-amber-300">
+                        現在地：1F 第一展示室（21.3坪 / 掲載史料数：203点対応）
+                    </div>
+                    <div class="text-[11px] text-gray-300 mt-0.5">
+                        ホットスポットまたは下記ボタンをクリックすると、複数画像（前へ/次へ切替）＋日英解説併記ビューアが開きます。
+                    </div>
+                </div>
+
+                <!-- Presenter Quick Action Buttons -->
+                <div class="sans-ui bg-slate-900/95 backdrop-blur-md border border-sky-500/40 p-2.5 rounded-xl shadow-xl">
+                    <div class="text-[11px] font-bold text-sky-300 mb-1.5">
+                        💡 プレゼン・動作確認用ダイレクトボタン：
+                    </div>
+                    <div class="flex flex-wrap gap-1.5">
+                        <button type="button" id="btn-quick-demo-doc" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-2.5 py-1.5 rounded-lg shadow transition">
+                            🔍 1. 古文書超拡大＋複数画像切替（全3枚）を実演
+                        </button>
+                        <button type="button" id="btn-quick-demo-showcase" class="bg-slate-800 hover:bg-slate-700 text-amber-200 border border-amber-400/40 font-semibold text-xs px-2.5 py-1.5 rounded-lg transition">
+                            📦 2. ショーケースB一覧を開く
+                        </button>
+                        <button type="button" id="btn-quick-demo-panel" class="bg-slate-800 hover:bg-slate-700 text-white border border-slate-600 font-semibold text-xs px-2.5 py-1.5 rounded-lg transition">
+                            🪧 3. 展示パネル2全画面
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top-Right: 1F Architectural Floor Map (34.7 Tsubo) -->
+            <div class="pano-ui-overlay sans-ui absolute top-4 right-4 z-30 bg-slate-900/90 backdrop-blur-md border border-slate-700 p-3 rounded-xl shadow-2xl w-64">
+                <div class="flex items-center justify-between text-xs font-bold text-amber-300 mb-2">
+                    <span>🗺️ 1F 展示室フロアマップ</span>
+                    <span class="text-[10px] text-gray-400">計34.7坪</span>
+                </div>
+                <div class="relative bg-slate-800 border border-slate-600 rounded-lg h-32 p-2 text-[10px] text-gray-300">
+                    <div class="absolute bottom-2 left-2 w-20 h-11 border border-slate-500 bg-slate-700/60 flex items-center justify-center text-center leading-tight rounded">
+                        エントランス<br/>(17.2坪)
+                    </div>
+                    <div class="absolute bottom-2 right-2 w-32 h-14 border-2 border-amber-500/70 bg-amber-950/40 flex flex-col items-center justify-center rounded">
+                        <span class="font-bold text-amber-200">第一展示室 (21.3坪)</span>
+                        <div class="relative mt-1 flex items-center justify-center">
+                            <div id="minimap-radar" class="w-8 h-8 rounded-full bg-amber-400/20 border-t-2 border-amber-300 pointer-events-none"></div>
+                            <button type="button" id="map-pin-room1" title="第一展示室へ移動" class="absolute w-4 h-4 rounded-full bg-amber-400 border-2 border-white shadow-lg ring-4 ring-amber-400/40"></button>
+                        </div>
+                    </div>
+                    <div class="absolute top-2 right-2 w-32 h-12 border border-sky-400/60 bg-slate-700/70 flex items-center justify-between px-2.5 rounded">
+                        <span>第二展示室<br/>(13.4坪)</span>
+                        <button type="button" id="map-pin-room2" title="第二展示室へ移動" class="w-3.5 h-3.5 rounded-full bg-slate-500 border border-white cursor-pointer hover:bg-amber-400"></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom-Center: Elderly-Friendly Large Navigation Bar -->
+            <div class="pano-ui-overlay sans-ui absolute bottom-4 left-1/2 -translate-x-1/2 z-30 bg-slate-900/95 backdrop-blur-md border border-slate-700 px-4 py-2 rounded-2xl shadow-2xl flex items-center gap-2">
+                <button type="button" id="cam-turn-left" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-bold border border-slate-600">
+                    ◀ 左を見る
+                </button>
+                <button type="button" id="cam-reset-front" class="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-500 text-slate-950 rounded-lg text-xs font-bold shadow">
+                    🎯 正面へ整列
+                </button>
+                <button type="button" id="cam-turn-right" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-bold border border-slate-600">
+                    右を見る ▶
+                </button>
+                <span class="text-slate-600">|</span>
+                <button type="button" id="cam-zoom-in" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-bold border border-slate-600">
+                    ＋ 空間拡大
+                </button>
+                <button type="button" id="cam-zoom-out" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-bold border border-slate-600">
+                    ー 空間縮小
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- =======================================================================
+         MODAL 1: SHOWCASE DRAWER
+         ======================================================================= -->
+    <div id="showcase-drawer-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border-2 border-amber-500/50 rounded-2xl max-w-5xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+            <div class="px-6 py-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+                <div>
+                    <div id="showcase-drawer-loc" class="sans-ui text-xs text-amber-400 font-semibold">1F 第一展示室（21.3坪）パネル2前</div>
+                    <h3 id="showcase-drawer-title" class="text-lg md:text-xl font-bold text-white mt-0.5">
+                        パネル2前 ショーケースB（海運・社則・創業期原史料）
+                    </h3>
+                </div>
+                <button type="button" id="btn-close-showcase" class="sans-ui bg-slate-800 hover:bg-red-700 text-white font-bold text-xs px-4 py-2 rounded-lg border border-slate-600 transition">
+                    ✕ 空間へ戻る
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto">
+                <div id="showcase-items-grid" class="grid grid-cols-1 md:grid-cols-3 gap-5"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =======================================================================
+         MODAL 2: OPENSEADRAGON DEEP ZOOM + MULTI-IMAGE PREV/NEXT + SIDE-BY-SIDE COMMENTARY
+         ======================================================================= -->
+    <div id="document-zoom-modal" class="fixed inset-0 z-50 bg-black/92 backdrop-blur-md hidden flex flex-col">
+        <!-- Modal Top Toolbar -->
+        <div class="h-16 bg-slate-900 border-b border-amber-500/40 px-4 lg:px-6 flex items-center justify-between shrink-0 gap-2">
+            <div class="min-w-0 pr-2">
+                <div id="doc-modal-code" class="sans-ui text-[11px] text-amber-400 font-semibold truncate">
+                    史料番号：MERI-M08-001  |  1875（明治8）年5月  |  収録画像：全 3 枚
+                </div>
+                <h3 id="doc-modal-title" class="text-sm md:text-base font-bold text-white truncate">
+                    郵便汽船三菱会社 社則達書（岩崎彌太郎直筆署名・朱印）
+                </h3>
+            </div>
+
+            <!-- Center: Multi-Image Prev / Next Switcher Bar (NEW!) -->
+            <div id="multi-image-nav-bar" class="sans-ui flex items-center gap-2 bg-slate-950 border border-amber-500/40 px-3 py-1.5 rounded-xl shrink-0">
+                <button type="button" id="btn-doc-prev-img" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-3.5 py-1.5 rounded-lg shadow transition">
+                    ◀ 前の画像
+                </button>
+                <span id="doc-image-page-indicator" class="text-xs font-bold text-amber-300 px-2 min-w-[95px] text-center">
+                    画像 1 / 3 枚目
+                </span>
+                <button type="button" id="btn-doc-next-img" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-3.5 py-1.5 rounded-lg shadow transition">
+                    次の画像 ▶
+                </button>
+            </div>
+
+            <!-- Right: Language Switch, Split View Toggle & Close -->
+            <div class="flex items-center gap-2 shrink-0">
+                <button type="button" id="btn-modal-lang-switch" class="sans-ui bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-400/40 font-bold text-xs px-3 py-2 rounded-lg transition">
+                    🌐 日/英 切替
+                </button>
+                <button type="button" id="btn-toggle-commentary" class="sans-ui bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs px-3 py-2 rounded-lg shadow transition hidden sm:inline-block">
+                    📖 解説文を隠して原史料を全画面化
+                </button>
+                <button type="button" id="btn-close-doc-modal" class="sans-ui bg-slate-800 hover:bg-red-700 text-white font-bold text-xs px-4 py-2 rounded-lg border border-slate-600 transition">
+                    ✕ 閉じる
+                </button>
+            </div>
+        </div>
+
+        <!-- Split Screen Body: Left = OpenSeadragon + Thumbnail Strip, Right = Zoomable Commentary -->
+        <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+            <!-- Left Pane: OpenSeadragon Deep Zoom Viewer -->
+            <div class="flex-1 relative bg-stone-950 flex flex-col min-h-[340px]">
+                <div id="osd-viewer-container" class="flex-1"></div>
+
+                <!-- Top Floating Security & Page Dimension Badge -->
+                <div class="sans-ui absolute top-3 left-3 z-20 bg-slate-900/90 border border-amber-500/40 px-3 py-1.5 rounded-lg text-[11px] text-gray-200 pointer-events-none shadow-lg max-w-md">
+                    <div class="text-amber-300 font-bold" id="doc-modal-note">第1頁：郵便汽船三菱会社 社則達書 本紙（2000×1400px）</div>
+                    <div class="text-[10px] text-emerald-400 mt-0.5">
+                        🛡️ 右クリック・画像保存抑止済（異サイズ画像もDeep Zoomタイルで自動正規化配信）
+                    </div>
+                </div>
+
+                <!-- Bottom Thumbnail Strip + Zoom Controls Bar -->
+                <div class="sans-ui bg-slate-950/95 border-t border-slate-800 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 z-20">
+                    <!-- Multi-Image Thumbnail Strip -->
+                    <div id="doc-thumb-strip" class="flex items-center gap-2 overflow-x-auto max-w-full"></div>
+
+                    <!-- Zoom Controls -->
+                    <div class="flex items-center gap-1.5 shrink-0 ml-auto">
+                        <span class="text-[11px] text-gray-300 font-semibold">ズーム (<span id="osd-zoom-indicator" class="text-amber-400">100%</span>):</span>
+                        <button type="button" id="osd-btn-zoom-in" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-3 py-1.5 rounded-lg shadow">
+                            ＋ 拡大
+                        </button>
+                        <button type="button" id="osd-btn-zoom-out" class="bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg border border-slate-600">
+                            ー 縮小
+                        </button>
+                        <button type="button" id="osd-btn-focus-seal" class="bg-red-800 hover:bg-red-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg border border-red-400/50 shadow">
+                            🎯 朱印・毛筆署名へ超拡大
+                        </button>
+                        <button type="button" id="osd-btn-home" class="bg-slate-800 hover:bg-slate-700 text-gray-200 text-xs px-2.5 py-1.5 rounded-lg border border-slate-600">
+                            全体表示
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Pane: Side-by-Side Commentary & Transcription -->
+            <aside id="doc-commentary-pane" class="w-full lg:w-[450px] xl:w-[500px] bg-slate-900 border-t lg:border-t-0 lg:border-l border-slate-700 flex flex-col shrink-0 max-h-[45vh] lg:max-h-none">
+                <div class="sans-ui px-5 py-3 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+                    <div class="text-xs font-bold text-amber-300">
+                        📜 翻刻（釈文）・日英解説文（併記表示）
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-[11px] text-gray-400">文字 (<span id="commentary-font-label">100%</span>):</span>
+                        <button type="button" id="btn-font-smaller" class="bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold px-2.5 py-1 rounded border border-slate-600">
+                            小 (ー)
+                        </button>
+                        <button type="button" id="btn-font-larger" class="bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold px-2.5 py-1 rounded shadow">
+                            大 (＋)
+                        </button>
+                    </div>
+                </div>
+
+                <div class="p-6 overflow-y-auto space-y-5 flex-1">
+                    <div class="bg-stone-950/90 border border-amber-500/30 rounded-xl p-4">
+                        <pre id="doc-modal-transcription" class="whitespace-pre-wrap font-serif text-amber-100 leading-relaxed"></pre>
+                    </div>
+                    <div class="bg-slate-800/70 border border-slate-700 rounded-xl p-4">
+                        <div id="doc-modal-explanation" class="whitespace-pre-wrap sans-ui text-gray-100 leading-relaxed"></div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- =======================================================================
+         MODAL 3: EXHIBITION WALL PANEL FULL-SCREEN ZOOM MODAL
+         ======================================================================= -->
+    <div id="panel-zoom-modal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex flex-col">
+        <div class="h-16 bg-slate-900 border-b border-amber-500/40 px-6 flex items-center justify-between">
+            <div>
+                <div id="panel-modal-num" class="sans-ui text-xs text-amber-400 font-semibold">パネル 2 / 全15枚</div>
+                <h3 id="panel-modal-title" class="text-base md:text-lg font-bold text-white">郵便汽船三菱会社の躍進と近代海運の確立</h3>
+            </div>
+            <div class="flex items-center gap-2">
+                <button type="button" id="panel-btn-zoom-in" class="sans-ui bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-3 py-2 rounded-lg">
+                    ＋ パネル拡大
+                </button>
+                <button type="button" id="panel-btn-zoom-out" class="sans-ui bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs px-3 py-2 rounded-lg border border-slate-600">
+                    ー パネル縮小
+                </button>
+                <button type="button" id="panel-btn-open-showcase" class="sans-ui bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs px-3.5 py-2 rounded-lg">
+                    📦 このパネル前のショーケースBを見る
+                </button>
+                <button type="button" id="btn-close-panel-modal" class="sans-ui bg-slate-800 hover:bg-red-700 text-white font-bold text-xs px-4 py-2 rounded-lg border border-slate-600">
+                    ✕ 閉じる
+                </button>
+            </div>
+        </div>
+        <div class="flex-1 relative bg-stone-950">
+            <div id="osd-panel-container" class="w-full h-full"></div>
+            <div id="panel-modal-summary" class="sans-ui absolute bottom-4 left-4 right-4 md:right-auto md:max-w-xl bg-slate-900/95 border border-slate-700 p-3.5 rounded-xl text-xs text-gray-200 shadow-2xl"></div>
+        </div>
+    </div>
+
+    <!-- =======================================================================
+         MODAL 4: TOUCH PANEL ARCHIVE
+         ======================================================================= -->
+    <div id="special-exhibition-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border-2 border-sky-400/50 rounded-2xl max-w-4xl w-full p-6 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
+                <div>
+                    <span class="sans-ui text-xs text-sky-400 font-bold">要件整理書 2-(3)④⑤ タッチパネル再現モジュール</span>
+                    <h3 class="text-xl font-bold text-white mt-0.5">過去の企画展アーカイブ ＆ 三菱のあゆみ・三菱を支えた人々</h3>
+                </div>
+                <button type="button" id="btn-close-special-modal" class="sans-ui bg-slate-800 hover:bg-red-700 text-white text-xs font-bold px-4 py-2 rounded-lg border border-slate-600">
+                    ✕ 閉じる
+                </button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sans-ui">
+                <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-4">
+                    <div class="text-xs font-bold text-amber-400">タッチパネル①（要件2-(3)④）</div>
+                    <h4 class="font-bold text-base text-white mt-1">過去の企画展展示アーカイブ</h4>
+                    <p class="text-xs text-gray-300 mt-1 leading-relaxed">
+                        各企画展アイコンをクリックすると当時の企画展パネル・史料が展開され、常設展と同じOpenSeadragonビューアでズームイン／アウトして解説を読了できます。
+                    </p>
+                </div>
+                <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-4">
+                    <div class="text-xs font-bold text-emerald-400">タッチパネル②（要件2-(3)⑤）</div>
+                    <h4 class="font-bold text-base text-white mt-1">三菱のあゆみ・三菱を支えた人々</h4>
+                    <p class="text-xs text-gray-300 mt-1 leading-relaxed">
+                        年表形式の「三菱のあゆみ」および人物伝「三菱を支えた人々」を収録しています。
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =======================================================================
+         VIEW 2: OFFLINE 203-ITEM DATA & DZI SLICE BUILDER TOOL (CMS不要の納品補助ツール)
+         ======================================================================= -->
+    <section id="view-cms" class="hidden max-w-7xl mx-auto p-4 lg:p-6 sans-ui space-y-6">
+        <div class="bg-slate-900 border border-amber-500/40 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
+            <div>
+                <div class="flex items-center gap-2">
+                    <span class="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-bold px-2.5 py-0.5 rounded">
+                        サーバーCMS開発不要・初期納品データ生成ツール
+                    </span>
+                    <span class="text-xs text-emerald-400 font-semibold">
+                        ✔ 203点対応  ✔ 1史料あたり複数画像対応  ✔ 縦横サイズ不統一の画像を自動DZI切片化
+                    </span>
+                </div>
+                <h2 class="text-lg font-bold text-white mt-1">
+                    🛠️ 三菱史料館 203点データ登録 ＆ Deep Zoom 切片・Krpano ホットスポット生成ツール
+                </h2>
+                <p class="text-xs text-gray-300 mt-0.5">
+                    高価なサーバーCMSを開発しなくても、この補助ツールと付属の自動変換スクリプト（<code>tools/build_203_dzi.py</code>）で203点すべての複数画像・日英解説・KrpanoホットスポットXMLを一括生成して納品できます。
+                </p>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <button type="button" id="btn-builder-new-entry" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3.5 py-2.5 rounded-xl shadow">
+                    ＋ 新規史料（#4〜#203）を追加作成
+                </button>
+                <button type="button" id="btn-export-json" class="bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs px-3.5 py-2.5 rounded-xl shadow">
+                    📥 exhibition_data.json を書き出す
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Left 2 Columns: Multi-Image & Bilingual Metadata Entry Form -->
+            <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
+                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                    <h3 class="font-bold text-base text-amber-400">1. 史料の選択・複数枚の画像ファイル登録（サイズ不統一OK）</h3>
+                    <select id="cms-doc-select" class="bg-slate-800 text-white text-xs font-semibold p-2 rounded-lg border border-slate-600 max-w-xs"></select>
+                </div>
+
+                <!-- Multi-Image Upload Box -->
+                <div class="bg-slate-950 border-2 border-dashed border-amber-500/40 rounded-xl p-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <div class="text-xs font-bold text-amber-300">📷 この史料に紐づく画像ファイルを追加（複数選択可・縦長/横長/解像度バラバラでも自動正規化）</div>
+                            <p class="text-[11px] text-gray-400 mt-0.5">
+                                画像を選択すると自動で解像度とDZIピラミッド階層を計算し、モーダル内の「◀ 前の画像 / 次の画像 ▶」で切り替えられるようになります。
+                            </p>
+                        </div>
+                        <label class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-lg shadow cursor-pointer shrink-0 text-center">
+                            📁 画像ファイルを選択（複数可）
+                            <input id="builder-file-input" type="file" accept="image/*" multiple class="hidden" />
+                        </label>
+                    </div>
+                    <div id="builder-images-list" class="mt-3 space-y-2"></div>
+                </div>
+
+                <!-- ID, Krpano Coordinates (ath/atv), Titles -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                        <label for="cms-input-id" class="block text-xs font-semibold text-gray-300 mb-1">史料ID (1〜203)</label>
+                        <input id="cms-input-id" type="text" class="w-full bg-slate-800 text-amber-300 font-mono font-bold text-xs p-2.5 rounded-lg border border-slate-700" />
+                    </div>
+                    <div>
+                        <label for="cms-input-ath" class="block text-xs font-semibold text-gray-300 mb-1">Krpano 水平座標 (ath)</label>
+                        <input id="cms-input-ath" type="number" step="0.5" class="w-full bg-slate-800 text-white font-mono text-xs p-2.5 rounded-lg border border-slate-700" />
+                    </div>
+                    <div>
+                        <label for="cms-input-atv" class="block text-xs font-semibold text-gray-300 mb-1">Krpano 垂直座標 (atv)</label>
+                        <input id="cms-input-atv" type="number" step="0.5" class="w-full bg-slate-800 text-white font-mono text-xs p-2.5 rounded-lg border border-slate-700" />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="cms-input-title-ja" class="block text-xs font-semibold text-gray-300 mb-1">史料タイトル（日本語）</label>
+                        <input id="cms-input-title-ja" type="text" class="w-full bg-slate-800 text-white text-xs p-2.5 rounded-lg border border-slate-700" />
+                    </div>
+                    <div>
+                        <label for="cms-input-title-en" class="block text-xs font-semibold text-gray-300 mb-1">史料タイトル（英語 / English）</label>
+                        <input id="cms-input-title-en" type="text" class="w-full bg-slate-800 text-white text-xs p-2.5 rounded-lg border border-slate-700" />
+                    </div>
+                    <div>
+                        <label for="cms-input-era-ja" class="block text-xs font-semibold text-gray-300 mb-1">年代（日本語）</label>
+                        <input id="cms-input-era-ja" type="text" class="w-full bg-slate-800 text-white text-xs p-2.5 rounded-lg border border-slate-700" />
+                    </div>
+                    <div>
+                        <label for="cms-input-era-en" class="block text-xs font-semibold text-gray-300 mb-1">年代（英語 / English）</label>
+                        <input id="cms-input-era-en" type="text" class="w-full bg-slate-800 text-white text-xs p-2.5 rounded-lg border border-slate-700" />
+                    </div>
+                </div>
+
+                <div>
+                    <label for="cms-input-transcription" class="block text-xs font-semibold text-gray-300 mb-1">原文翻刻（釈文）テキスト</label>
+                    <textarea id="cms-input-transcription" rows="2" class="w-full bg-slate-800 text-amber-100 text-xs p-2.5 rounded-lg border border-slate-700 font-serif"></textarea>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="cms-input-explanation-ja" class="block text-xs font-semibold text-gray-300 mb-1">解説文（日本語）</label>
+                        <textarea id="cms-input-explanation-ja" rows="4" class="w-full bg-slate-800 text-white text-xs p-2.5 rounded-lg border border-slate-700"></textarea>
+                    </div>
+                    <div>
+                        <label for="cms-input-explanation-en" class="block text-xs font-semibold text-gray-300 mb-1">解説文（英語 / English）</label>
+                        <textarea id="cms-input-explanation-en" rows="4" class="w-full bg-slate-800 text-sky-100 text-xs p-2.5 rounded-lg border border-slate-700"></textarea>
+                    </div>
+                </div>
+
+                <div class="flex justify-end pt-2">
+                    <button type="button" id="btn-cms-save" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm px-6 py-2.5 rounded-xl shadow-lg">
+                        💾 登録・プレビューへ即時反映（Krpano XML も更新）
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Column: Auto-Generated Krpano XML & Manual DZI CLI Guide -->
+            <div class="space-y-6">
+                <!-- Auto-Generated Krpano XML Box -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                    <div class="flex items-center justify-between mb-2">
+                        <div>
+                            <div class="text-xs font-bold text-amber-400">2. Krpano ホットスポットXML 自動生成</div>
+                            <h3 class="font-bold text-sm text-white">vtour/hotspots_203.xml</h3>
+                        </div>
+                        <button type="button" id="btn-copy-krpano-xml" class="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40 text-xs font-bold px-3 py-1.5 rounded-lg">
+                            📋 XMLをコピー
+                        </button>
+                    </div>
+                    <p class="text-[11px] text-gray-400 mb-2 leading-relaxed">
+                        空間内で人工調整する際は、Krpano画面上で <b>Shiftキーを押しながらホットスポットをマウスドラッグ</b> すると、ブラウザコンソールに新しい <code>ath / atv</code> 座標が出力されます。
+                    </p>
+                    <textarea id="builder-krpano-xml-output" rows="10" readonly class="w-full bg-slate-950 text-emerald-300 font-mono text-[11px] p-3 rounded-xl border border-slate-800"></textarea>
+                </div>
+
+                <!-- Batch & Manual DZI Slicing Guide -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3">
+                    <div class="text-xs font-bold text-sky-400">3. 一括＆手動 Deep Zoom 切片生成コマンド（同梱済）</div>
+                    <h3 class="font-bold text-sm text-white">サイズ不統一の203点画像を自動タイル化</h3>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-[11px] space-y-2">
+                        <div class="text-amber-300 font-bold">① 203点一括自動生成（Mac: build_dzi_macos.command / Win: build_dzi_windows.bat をダブルクリック、または下記コマンド）：</div>
+                        <code class="block bg-slate-900 text-emerald-300 p-2 rounded font-mono">python3 tools/build_203_dzi.py</code>
+                        <div class="text-amber-300 font-bold pt-1">② 単一画像の手動DZI切片生成コマンド：</div>
+                        <code class="block bg-slate-900 text-emerald-300 p-2 rounded font-mono">python3 tools/make_single_dzi.py 入力画像.jpg assets/documents/doc_005/page_1</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- 貴社既存の vtour フォルダ内の tour.js を自動読み込み（未配置時もエラーにならず内蔵パノラマで起動） -->
+    <script src="vtour/tour.js"></script>
+    <script src="krpano/krpano_bridge.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

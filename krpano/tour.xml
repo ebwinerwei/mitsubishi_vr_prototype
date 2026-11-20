@@ -1,0 +1,49 @@
+<krpano version="1.21" title="三菱史料館 ウェブ展示室 (Mitsubishi Archives Virtual Exhibition)">
+    <!--
+        Krpano 360°空間エンジン設定ファイル (tour.xml)
+        特徴：3D空間はあくまで背景演出とし、パネル・ショーケースのクリック時は
+        krpano JavaScript Interface (js() アクション) を通じて、上位の OpenSeadragon 2Dモーダルを呼び出す設計。
+    -->
+    <include url="skin/vtourskin.xml" />
+
+    <security cors="anonymous" />
+    <contextmenu fullscreen="true" versioninfo="false" touch="false">
+        <item name="copyright" caption="© 公益財団法人 三菱経済研究所 三菱史料館 (無断転載・複製禁止)" enabled="false" />
+    </contextmenu>
+
+    <!-- 3Dトランジション設定（点から点の移動を滑らかな歩行演出に変換） -->
+    <action name="smooth_walk_to">
+        tween(view.fov, 65, 0.45, easeInOutQuad);
+        loadscene(%1, null, MERGE, BLEND(1.0, easeInOutQuad));
+        lookat(%2, %3, 85);
+        js(window.ArchiveBridge.onSceneChanged(%1));
+    </action>
+
+    <!-- 第一展示室（21.3坪）メインシーン -->
+    <scene name="scene_room1_center" title="第一展示室（中央・海運と創業コーナー）" onstart="" thumburl="assets/panoramas/room1_equirectangular.jpg">
+        <view hlookat="0.0" vlookat="2.0" fovtype="MFOV" fov="85" maxpixelzoom="1.5" fovmin="55" fovmax="110" limitview="range" vlookatmin="-45" vlookatmax="45" />
+        <image>
+            <sphere url="assets/panoramas/room1_equirectangular.jpg" />
+        </image>
+
+        <!-- 展示パネル2 ホットスポット (OpenSeadragonパネル全画面表示を呼び出す) -->
+        <hotspot name="hs_panel_02" style="skin_hotspotstyle" ath="-18.0" atv="-8.0"
+                 onclick="js(window.ArchiveBridge.openPanelModal('PANEL-02'));"
+                 onhover="showtext('パネル2：郵便汽船三菱会社の躍進（クリックで全画面拡大）');" />
+
+        <!-- ショーケースB ホットスポット (ショーケース内史料一覧→原史料＋解説文併記モーダルを呼び出す) -->
+        <hotspot name="hs_showcase_b" style="skin_hotspotstyle" ath="-14.0" atv="14.5"
+                 onclick="js(window.ArchiveBridge.openShowcaseDrawer('SHOWCASE-B'));"
+                 onhover="showtext('ショーケースB：郵便汽船三菱会社・創業期原史料（クリックで史料一覧・超拡大判読）');" />
+
+        <!-- タッチパネル（過去の企画展アーカイブ）ホットスポット -->
+        <hotspot name="hs_touch_special" style="skin_hotspotstyle" ath="48.0" atv="-4.0"
+                 onclick="js(window.ArchiveBridge.openSpecialExhibitionModal());"
+                 onhover="showtext('タッチパネル：過去の企画展・三菱のあゆみ');" />
+
+        <!-- 第二展示室（13.4坪）への移動ホットスポット -->
+        <hotspot name="hs_walk_room2" style="skin_hotspotstyle" ath="22.0" atv="22.0"
+                 onclick="smooth_walk_to('scene_room2_center', 15.0, 0.0);"
+                 onhover="showtext('第二展示室（13.4坪）へ進む');" />
+    </scene>
+</krpano>
